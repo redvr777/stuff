@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ops Console &middot; PlayFab Moderation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #0F1320;
+    --ink-surface: #171C2C;
+    --ink-raised: #1D2338;
+    --ink-border: #262C40;
+    --amber: #F5A623;
+    --blue: #4C7EFF;
+    --green: #34D399;
+    --red: #E5484D;
+    --text-primary: #E8EAF2;
+    --text-muted: #8890A6;
+    --text-faint: #565D75;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(76,126,255,0.08), transparent), var(--ink);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .display { font-family: 'Space Grotesk', sans-serif; }
+
+  header {
+    border-bottom: 1px solid var(--ink-border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+  .brand-name { font-weight: 600; letter-spacing: -0.01em; }
+  .brand-sub { color: var(--text-faint); font-size: 12px; margin-left: 4px; }
+
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+
+  .card {
+    background: var(--ink-surface);
+    border: 1px solid var(--ink-border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .card p.hint {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0 0 16px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  input, textarea {
+    width: 100%;
+    background: var(--ink);
+    border: 1px solid var(--ink-border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    margin-bottom: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, textarea:focus { border-color: var(--blue); }
+  textarea { resize: none; }
+
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 10px 16px;
+    border: none;
+    cursor: pointer;
+    transition: filter 0.15s, background 0.15s;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--amber); color: var(--ink); width: 100%; }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-danger:hover:not(:disabled) { filter: brightness(1.1); }
+  .btn-outline { background: transparent; border: 1px solid var(--blue); color: var(--blue); }
+  .btn-outline:hover:not(:disabled) { background: rgba(76,126,255,0.1); }
+  .btn-ghost { background: transparent; border: 1px solid var(--ink-border); color: var(--text-muted); width: 100%; margin-top: 8px; }
+  .btn-ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--text-faint); }
+
+  .profile-box {
+    background: var(--ink);
+    border: 1px solid var(--ink-border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .profile-box .name { font-weight: 600; font-size: 15px; }
+  .profile-box .id { color: var(--text-faint); font-size: 12px; margin-top: 2px; }
+  .profile-box .meta { color: var(--text-muted); font-size: 12px; margin-top: 10px; line-height: 1.6; }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-top: 8px;
+  }
+  .badge-banned { background: rgba(229,72,77,0.15); color: var(--red); }
+  .badge-clean { background: rgba(52,211,153,0.15); color: var(--green); }
+
+  .status {
+    font-size: 13px;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 14px;
+    border: 1px solid transparent;
+  }
+  .status-success { color: var(--green); background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.2); }
+  .status-error { color: var(--red); background: rgba(229,72,77,0.1); border-color: rgba(229,72,77,0.2); }
+
+  .actions-log {
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .log-entry {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--ink-border);
+    font-size: 13px;
+  }
+  .log-entry:last-child { border-bottom: none; }
+  .log-entry .who { color: var(--text-primary); }
+  .log-entry .what { font-size: 11px; padding: 1px 7px; border-radius: 999px; font-weight: 600; }
+  .log-empty { color: var(--text-faint); font-size: 13px; text-align: center; padding: 12px 0; }
+
+  details summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  details[open] summary { margin-bottom: 12px; }
+
+  .connected-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--green);
+    background: rgba(52,211,153,0.1);
+    border: 1px solid rgba(52,211,153,0.2);
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="dot"></div>
+    <span class="brand-name display">Ops Console</span>
+    <span class="brand-sub mono">playfab moderation</span>
+  </div>
+  <span id="connStatus"></span>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2>Connection</h2>
+    <p class="hint">Your Secret Key stays in this browser's local storage only — it's never sent anywhere but PlayFab.</p>
+    <label for="titleId">Title ID</label>
+    <input id="titleId" placeholder="e.g. 1A2B3" autocomplete="off" />
+    <label for="secretKey">Secret Key</label>
+    <input id="secretKey" type="password" placeholder="From Game Manager → Settings → Secret Keys" autocomplete="off" />
+    <button class="btn-primary" onclick="saveCredentials()">Save connection</button>
+    <div id="credStatus"></div>
+  </div>
+
+  <div class="card">
+    <h2>Find a player</h2>
+    <p class="hint">Paste their PlayFab ID (most reliable) or search by display name.</p>
+    <label for="lookupInput">PlayFab ID or display name</label>
+    <input id="lookupInput" placeholder="e.g. AB12CD34EF56 or PlayerName123" />
+    <button class="btn-primary" onclick="lookupPlayer()" id="lookupBtn">Look up player</button>
+    <div id="lookupStatus"></div>
+  </div>
+
+  <div class="card" id="playerCard" style="display:none;">
+    <h2>Player</h2>
+    <div class="profile-box" id="profileBox"></div>
+
+    <label for="reason">Reason</label>
+    <textarea id="reason" rows="2" placeholder="Toxic chat, exploiting, cheating, etc."></textarea>
+
+    <label for="duration">Ban duration (hours) — leave blank for permanent</label>
+    <input id="duration" type="number" min="1" placeholder="Permanent" />
+
+    <div class="row">
+      <button class="btn-outline" onclick="flagKick()">Kick flag</button>
+      <button class="btn-danger" onclick="banPlayer()">Ban player</button>
+    </div>
+    <button class="btn-ghost" onclick="unbanPlayer()">Revoke existing ban</button>
+
+    <div id="actionStatus"></div>
+
+    <details style="margin-top:16px;">
+      <summary>Why "kick flag" isn't instant</summary>
+      <p class="hint" style="margin:0;">
+        Photon doesn't give an outside tool a way to force-disconnect a connected player directly.
+        "Kick flag" writes a flag to this player's PlayFab read-only data that your game can check
+        every few seconds and disconnect on. Ban is instant and real — it stops them logging back in
+        via PlayFab immediately.
+      </p>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Recent actions</h2>
+    <p class="hint">Kept locally in this browser as a quick reference.</p>
+    <div class="actions-log" id="actionsLog"></div>
+  </div>
+
+</main>
+
+<script>
+  const state = { titleId: '', secretKey: '', currentPlayer: null };
+
+  function loadCredentials() {
+    state.titleId = localStorage.getItem('ops_title_id') || '';
+    state.secretKey = localStorage.getItem('ops_secret_key') || '';
+    document.getElementById('titleId').value = state.titleId;
+    document.getElementById('secretKey').value = state.secretKey;
+    updateConnPill();
+  }
+
+  function updateConnPill() {
+    const el = document.getElementById('connStatus');
+    el.innerHTML = state.titleId && state.secretKey
+      ? '<span class="connected-pill">● connected</span>'
+      : '';
+  }
+
+  function saveCredentials() {
+    state.titleId = document.getElementById('titleId').value.trim();
+    state.secretKey = document.getElementById('secretKey').value.trim();
+    localStorage.setItem('ops_title_id', state.titleId);
+    localStorage.setItem('ops_secret_key', state.secretKey);
+    const el = document.getElementById('credStatus');
+    if (state.titleId && state.secretKey) {
+      el.innerHTML = '<div class="status status-success">Saved. You can start looking up players.</div>';
+    } else {
+      el.innerHTML = '<div class="status status-error">Enter both Title ID and Secret Key.</div>';
+    }
+    updateConnPill();
+  }
+
+  async function callPlayFab(endpoint, body) {
+    if (!state.titleId || !state.secretKey) {
+      throw new Error('Save your Title ID and Secret Key first.');
+    }
+    const res = await fetch(`https://${state.titleId}.playfabapi.com${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-SecretKey': state.secretKey,
+      },
+      body: JSON.stringify(body || {}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.errorMessage || `Request to ${endpoint} failed`);
+    }
+    return data.data;
+  }
+
+  function looksLikePlayFabId(v) {
+    return /^[A-Za-z0-9]{10,20}$/.test(v) && !v.includes(' ');
+  }
+
+  async function lookupPlayer() {
+    const raw = document.getElementById('lookupInput').value.trim();
+    const statusEl = document.getElementById('lookupStatus');
+    const btn = document.getElementById('lookupBtn');
+    if (!raw) return;
+    statusEl.innerHTML = '';
+    btn.disabled = true;
+    btn.textContent = 'Looking up…';
+    try {
+      let playFabId = raw;
+      if (!looksLikePlayFabId(raw)) {
+        const idResult = await callPlayFab('/Server/GetPlayFabIDsFromDisplayNames', { DisplayNames: [raw] });
+        const match = (idResult.Data || [])[0];
+        if (!match || !match.PlayFabId) {
+          throw new Error(`No player found with display name "${raw}"`);
+        }
+        playFabId = match.PlayFabId;
+      }
+      const profile = await callPlayFab('/Server/GetPlayerProfile', {
+        PlayFabId: playFabId,
+        ProfileConstraints: {
+          ShowDisplayName: true,
+          ShowBannedUntil: true,
+          ShowLastLogin: true,
+          ShowCreated: true,
+        },
+      });
+      if (!profile.PlayerProfile) {
+        throw new Error('Player found but has no profile data yet.');
+      }
+      state.currentPlayer = profile.PlayerProfile;
+      renderPlayerCard(profile.PlayerProfile);
+      statusEl.innerHTML = '';
+    } catch (err) {
+      statusEl.innerHTML = `<div class="status status-error">${escapeHtml(err.message)}</div>`;
+      document.getElementById('playerCard').style.display = 'none';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Look up player';
+    }
+  }
+
+  function renderPlayerCard(p) {
+    const banned = p.BannedUntil && new Date(p.BannedUntil) > new Date();
+    document.getElementById('profileBox').innerHTML = `
+      <div class="name">${escapeHtml(p.DisplayName || 'Unnamed player')}</div>
+      <div class="id mono">${escapeHtml(p.PlayerId)}</div>
+      <div class="meta">
+        Created: ${p.Created ? new Date(p.Created).toLocaleDateString() : '—'}<br/>
+        Last login: ${p.LastLogin ? new Date(p.LastLogin).toLocaleString() : '—'}
+      </div>
+      <span class="badge ${banned ? 'badge-banned' : 'badge-clean'}">
+        ${banned ? 'Banned until ' + new Date(p.BannedUntil).toLocaleString() : 'No active ban'}
+      </span>
+    `;
+    document.getElementById('actionStatus').innerHTML = '';
+    document.getElementById('playerCard').style.display = 'block';
+  }
+
+  async function banPlayer() {
+    const reason = document.getElementById('reason').value.trim() || 'Banned via Ops Console';
+    const durationRaw = document.getElementById('duration').value.trim();
+    const duration = durationRaw ? Number(durationRaw) : undefined;
+    await runAction('ban', async () => {
+      await callPlayFab('/Admin/BanUsers', {
+        Bans: [{ PlayFabId: state.currentPlayer.PlayerId, Reason: reason, DurationInHours: duration }],
+      });
+      return 'Player banned in PlayFab.';
+    });
+  }
+
+  async function unbanPlayer() {
+    await runAction('unban', async () => {
+      const bans = await callPlayFab('/Admin/GetUserBans', { PlayFabId: state.currentPlayer.PlayerId });
+      const activeBanIds = (bans.BanData || []).filter(b => b.Active).map(b => b.BanId);
+      if (activeBanIds.length === 0) return 'No active ban to revoke.';
+      await callPlayFab('/Admin/RevokeBans', { BanIds: activeBanIds });
+      return 'Ban revoked.';
+    });
+  }
+
+  async function flagKick() {
+    const reason = document.getElementById('reason').value.trim() || 'Kicked via Ops Console';
+    await runAction('kick', async () => {
+      await callPlayFab('/Server/UpdateUserReadOnlyData', {
+        PlayFabId: state.currentPlayer.PlayerId,
+        Data: {
+          moderation_flag: JSON.stringify({ action: 'kick', reason, at: new Date().toISOString() }),
+        },
+      });
+      return 'Kick flag written. Player will be disconnected once your game checks it.';
+    });
+  }
+
+  async function runAction(type, fn) {
+    const statusEl = document.getElementById('actionStatus');
+    statusEl.innerHTML = '';
+    try {
+      const message = await fn();
+      statusEl.innerHTML = `<div class="status status-success">${escapeHtml(message)}</div>`;
+      logAction(type, state.currentPlayer, true);
+      if (type === 'ban') {
+        state.currentPlayer.BannedUntil = document.getElementById('duration').value
+          ? new Date(Date.now() + Number(document.getElementById('duration').value) * 3600000).toISOString()
+          : '9999-12-31T00:00:00Z';
+        renderPlayerCard(state.currentPlayer);
+      } else if (type === 'unban') {
+        state.currentPlayer.BannedUntil = null;
+        renderPlayerCard(state.currentPlayer);
+      }
+    } catch (err) {
+      statusEl.innerHTML = `<div class="status status-error">${escapeHtml(err.message)}</div>`;
+      logAction(type, state.currentPlayer, false);
+    }
+  }
+
+  function logAction(type, player, success) {
+    const log = JSON.parse(localStorage.getItem('ops_action_log') || '[]');
+    log.unshift({
+      type, success,
+      name: player.DisplayName || player.PlayerId,
+      id: player.PlayerId,
+      time: new Date().toISOString(),
+    });
+    localStorage.setItem('ops_action_log', JSON.stringify(log.slice(0, 30)));
+    renderLog();
+  }
+
+  const typeColors = {
+    ban: 'color:#E5484D;background:rgba(229,72,77,0.15)',
+    unban: 'color:#34D399;background:rgba(52,211,153,0.15)',
+    kick: 'color:#4C7EFF;background:rgba(76,126,255,0.15)',
+  };
+
+  function renderLog() {
+    const log = JSON.parse(localStorage.getItem('ops_action_log') || '[]');
+    const el = document.getElementById('actionsLog');
+    if (log.length === 0) {
+      el.innerHTML = '<div class="log-empty">No actions yet.</div>';
+      return;
+    }
+    el.innerHTML = log.map(entry => `
+      <div class="log-entry">
+        <div>
+          <div class="who">${escapeHtml(entry.name)}</div>
+          <div class="id mono" style="color:var(--text-faint);font-size:11px;">${new Date(entry.time).toLocaleString()}</div>
+        </div>
+        <span class="what" style="${typeColors[entry.type] || ''}">${entry.success ? entry.type : entry.type + ' failed'}</span>
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+
+  document.getElementById('lookupInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') lookupPlayer();
+  });
+
+  loadCredentials();
+  renderLog();
+</script>
+
+</body>
+</html>
