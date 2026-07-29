@@ -437,23 +437,23 @@
   async function flagKick() {
     const reason = document.getElementById('reason').value.trim() || 'Kicked via Ops Console';
     await runAction('kick', async () => {
-      await callPlayFab('/Server/UpdateUserReadOnlyData', {
+      await callPlayFab('/Server/ExecuteCloudScript', {
         PlayFabId: state.currentPlayer.PlayerId,
-        Permission: 'Public',
-        Data: {
-          moderation_flag: JSON.stringify({ action: 'kick', reason, at: new Date().toISOString() }),
-        },
+        FunctionName: 'kickPlayer',
+        FunctionParameter: { playFabId: state.currentPlayer.PlayerId, reason },
+        GeneratePlayStreamEvent: false,
       });
-      return 'Kick flag written. Player will be disconnected the next time their Master Client checks (every few seconds).';
+      return 'Kick flag sent via CloudScript. Player will be disconnected the next time their game checks (every few seconds).';
     });
   }
 
   async function clearKickFlag() {
     await runAction('clear', async () => {
-      await callPlayFab('/Server/UpdateUserReadOnlyData', {
+      await callPlayFab('/Server/ExecuteCloudScript', {
         PlayFabId: state.currentPlayer.PlayerId,
-        Permission: 'Public',
-        Data: { moderation_flag: '' },
+        FunctionName: 'clearKickFlag',
+        FunctionParameter: { playFabId: state.currentPlayer.PlayerId },
+        GeneratePlayStreamEvent: false,
       });
       return 'Kick flag cleared. Player can rejoin normally.';
     });
