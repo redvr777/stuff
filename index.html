@@ -182,39 +182,6 @@
     padding: 4px 10px;
     border-radius: 999px;
   }
-
-  .room-list {
-    max-height: 260px;
-    overflow-y: auto;
-    border: 1px solid var(--ink-border);
-    border-radius: 8px;
-    margin-top: 4px;
-  }
-  .room-player {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--ink-border);
-    cursor: pointer;
-    transition: background 0.12s;
-  }
-  .room-player:last-child { border-bottom: none; }
-  .room-player:hover { background: var(--ink-raised); }
-  .room-player .rp-name { font-weight: 600; font-size: 13px; }
-  .room-player .rp-id { color: var(--text-faint); font-size: 11px; }
-  .room-player .rp-time { color: var(--text-muted); font-size: 11px; text-align: right; white-space: nowrap; }
-  .stale-tag {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--amber);
-    background: rgba(245,166,35,0.12);
-    padding: 1px 6px;
-    border-radius: 999px;
-    margin-left: 6px;
-  }
 </style>
 </head>
 <body>
@@ -239,18 +206,6 @@
     <input id="secretKey" type="password" placeholder="From Game Manager → Settings → Secret Keys" autocomplete="off" />
     <button class="btn-primary" onclick="saveCredentials()">Save connection</button>
     <div id="credStatus"></div>
-  </div>
-
-  <div class="card">
-    <h2>Find players by server</h2>
-    <p class="hint">Type a Photon room number to see everyone currently reported in it. This list is self-reported by the game client, so it can lag a few seconds or occasionally show someone who crashed out without leaving cleanly — treat it as "who to check", not gospel.</p>
-    <label for="serverNumberInput">Server / room number</label>
-    <input id="serverNumberInput" placeholder="e.g. 4521" />
-    <button class="btn-primary" onclick="loadRoomPlayers()" id="roomLookupBtn">Load players in room</button>
-    <div id="roomLookupStatus"></div>
-    <div id="roomPlayersWrap" style="display:none; margin-top:12px;">
-      <div class="room-list" id="roomPlayersList"></div>
-    </div>
   </div>
 
   <div class="card">
@@ -297,20 +252,13 @@
 
   <div class="card">
     <h2>Set up your game (one-time)</h2>
-    <p class="hint" style="margin:0 0 12px;">
-      For kick/ban to actually take effect, and for the server lookup above to show anyone, your game needs:
-    </p>
-    <p class="hint" style="margin:0 0 8px;">
-      <strong>For kicking:</strong> 1) set Photon's UserId to the player's PlayFabId when connecting
+    <p class="hint" style="margin:0;">
+      For this button to actually disconnect players, your game needs three things:
+      1) set Photon's UserId to the player's PlayFabId when connecting
       (<code>PhotonNetwork.AuthValues = new AuthenticationValues(playFabId)</code>),
       2) enable Photon's CloseConnection feature (off by default), and
       3) attach <code>KickWatcher.cs</code> to a persistent GameObject in your scene.
-    </p>
-    <p class="hint" style="margin:0;">
-      <strong>For the server lookup:</strong> attach <code>RoomPresenceReporter.cs</code> to a
-      persistent GameObject too. It reports "I joined/left room X" to PlayFab via the new
-      <code>reportRoomJoin</code> / <code>reportRoomLeave</code> CloudScript handlers, which is
-      what populates the dropdown above. Without it, room lookup will always come back empty.
+      Without all three, kicks will only ever exist as a flag in PlayFab.
     </p>
   </div>
 
@@ -396,9 +344,7 @@
           .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join('; ') : msgs}`)
           .join(', ');
       }
-      const err = new Error((data.errorMessage || `Request to ${endpoint} failed`) + detail);
-      err.errorCode = data.error;
-      throw err;
+      throw new Error((data.errorMessage || `Request to ${endpoint} failed`) + detail);
     }
     return data.data;
   }
@@ -406,108 +352,6 @@
   function looksLikePlayFabId(v) {
     return /^[A-Za-z0-9]{10,20}$/.test(v) && !v.includes(' ');
   }
-
-  // ---------- Server / room lookup ----------
-
-  async function loadRoomPlayers() {
-    const roomNumber = document.getElementById('serverNumberInput').value.trim();
-    const statusEl = document.getElementById('roomLookupStatus');
-    const wrapEl = document.getElementById('roomPlayersWrap');
-    const listEl = document.getElementById('roomPlayersList');
-    const btn = document.getElementById('roomLookupBtn');
-
-    if (!roomNumber) return;
-
-    statusEl.innerHTML = '';
-    wrapEl.style.display = 'none';
-    btn.disabled = true;
-    btn.textContent = 'Loading…';
-
-    try {
-      const groupId = 'room_' + roomNumber;
-      let result;
-      try {
-        result = await callPlayFab('/Server/GetSharedGroupData', {
-          SharedGroupId: groupId,
-          GetMembers: false,
-        });
-      } catch (err) {
-        console.error('GetSharedGroupData error:', err);
-        // Only a genuine "this group doesn't exist yet" error means the room
-        // is legitimately empty. Anything else is a real problem and we
-        // should surface it instead of pretending the room has no players.
-        const notFound = err.errorCode === 'SharedGroupNotFound'
-          || err.errorCode === 'InvalidSharedGroupId'
-          || /not\s*found/i.test(err.message || '');
-        if (notFound) {
-          result = { Data: {} };
-        } else {
-          throw err;
-        }
-      }
-
-      const entries = Object.entries(result.Data || {})
-        .map(([playFabId, record]) => {
-          let parsed = { displayName: '', joinedAt: null };
-          try {
-            parsed = JSON.parse(record.Value);
-          } catch {
-            // malformed/legacy entry, ignore parse failure
-          }
-          return { playFabId, displayName: parsed.displayName, joinedAt: parsed.joinedAt };
-        })
-        .sort((a, b) => (b.joinedAt || '').localeCompare(a.joinedAt || ''));
-
-      if (entries.length === 0) {
-        statusEl.innerHTML = `<div class="status status-error">No players currently tracked in room "${escapeHtml(roomNumber)}". Either it's empty, the number is wrong, or RoomPresenceReporter isn't wired up in the game yet.</div>`;
-        return;
-      }
-
-      renderRoomPlayers(entries);
-      wrapEl.style.display = 'block';
-    } catch (err) {
-      statusEl.innerHTML = `<div class="status status-error">${escapeHtml(err.message)}</div>`;
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Load players in room';
-    }
-  }
-
-  function renderRoomPlayers(entries) {
-    const listEl = document.getElementById('roomPlayersList');
-    const now = Date.now();
-    listEl.innerHTML = entries.map(e => {
-      const joinedMs = e.joinedAt ? new Date(e.joinedAt).getTime() : null;
-      const isStale = joinedMs && (now - joinedMs) > 30 * 60 * 1000;
-      const timeLabel = joinedMs ? timeAgo(joinedMs) : '—';
-      return `
-        <div class="room-player" onclick="selectRoomPlayer('${escapeAttr(e.playFabId)}')">
-          <div>
-            <div class="rp-name">${escapeHtml(e.displayName || 'Unnamed player')}${isStale ? '<span class="stale-tag">possibly stale</span>' : ''}</div>
-            <div class="rp-id mono">${escapeHtml(e.playFabId)}</div>
-          </div>
-          <div class="rp-time">joined ${timeLabel}</div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function timeAgo(ms) {
-    const diffSec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
-    if (diffSec < 60) return `${diffSec}s ago`;
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHr = Math.floor(diffMin / 60);
-    return `${diffHr}h ago`;
-  }
-
-  function selectRoomPlayer(playFabId) {
-    document.getElementById('lookupInput').value = playFabId;
-    lookupPlayer();
-    document.getElementById('playerCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  // ---------- Individual player lookup ----------
 
   async function lookupPlayer() {
     const raw = document.getElementById('lookupInput').value.trim();
@@ -680,15 +524,8 @@
     return div.innerHTML;
   }
 
-  function escapeAttr(str) {
-    return String(str == null ? '' : str).replace(/'/g, "\\'");
-  }
-
   document.getElementById('lookupInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') lookupPlayer();
-  });
-  document.getElementById('serverNumberInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') loadRoomPlayers();
   });
 
   loadCredentials();
