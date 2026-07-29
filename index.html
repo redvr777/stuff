@@ -290,17 +290,39 @@
     if (!state.titleId || !state.secretKey) {
       throw new Error('Save your Title ID and Secret Key first.');
     }
-    const res = await fetch(`https://${state.titleId}.playfabapi.com${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-SecretKey': state.secretKey,
-      },
-      body: JSON.stringify(body || {}),
-    });
-    const data = await res.json();
+    let res;
+    try {
+      res = await fetch(`https://${state.titleId}.playfabapi.com${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-SecretKey': state.secretKey,
+        },
+        body: JSON.stringify(body || {}),
+      });
+    } catch (networkErr) {
+      throw new Error(
+        `Couldn't reach PlayFab (network/CORS error). Double-check your Title ID is correct — it should look like "1A2B3", not the full domain.`
+      );
+    }
+
+    const raw = await res.text();
+    let data = null;
+    if (raw) {
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        // fall through with data = null
+      }
+    }
+
+    if (!data) {
+      throw new Error(
+        `PlayFab returned an empty or non-JSON response (HTTP ${res.status}). This usually means the Title ID is wrong, or the Secret Key doesn't match this title.`
+      );
+    }
     if (!res.ok) {
-      throw new Error(data.errorMessage || `Request to ${endpoint} failed`);
+      throw new Error(data.errorMessage || `Request to ${endpoint} failed (HTTP ${res.status})`);
     }
     return data.data;
   }
@@ -320,12 +342,12 @@
     try {
       let playFabId = raw;
       if (!looksLikePlayFabId(raw)) {
-        const idResult = await callPlayFab('/Server/GetPlayFabIDsFromDisplayNames', { DisplayNames: [raw] });
-        const match = (idResult.Data || [])[0];
-        if (!match || !match.PlayFabId) {
+        const acctResult = await callPlayFab('/Server/GetUserAccountInfo', { TitleDisplayName: raw });
+        const found = acctResult.UserInfo && acctResult.UserInfo.PlayFabId;
+        if (!found) {
           throw new Error(`No player found with display name "${raw}"`);
         }
-        playFabId = match.PlayFabId;
+        playFabId = found;
       }
       const profile = await callPlayFab('/Server/GetPlayerProfile', {
         PlayFabId: playFabId,
