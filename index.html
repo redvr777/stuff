@@ -322,7 +322,13 @@
       );
     }
     if (!res.ok) {
-      throw new Error(data.errorMessage || `Request to ${endpoint} failed (HTTP ${res.status})`);
+      let detail = '';
+      if (data.errorDetails) {
+        detail = ' — ' + Object.entries(data.errorDetails)
+          .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join('; ') : msgs}`)
+          .join(', ');
+      }
+      throw new Error((data.errorMessage || `Request to ${endpoint} failed`) + detail);
     }
     return data.data;
   }
@@ -342,7 +348,7 @@
     try {
       let playFabId = raw;
       if (!looksLikePlayFabId(raw)) {
-        const acctResult = await callPlayFab('/Server/GetUserAccountInfo', { TitleDisplayName: raw });
+        const acctResult = await callPlayFab('/Admin/GetUserAccountInfo', { TitleDisplayName: raw });
         const found = acctResult.UserInfo && acctResult.UserInfo.PlayFabId;
         if (!found) {
           throw new Error(`No player found with display name "${raw}"`);
