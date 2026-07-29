@@ -432,9 +432,17 @@
           GetMembers: false,
         });
       } catch (err) {
-        // PlayFab returns an error if the shared group has never been created,
-        // which just means nobody has joined this room since tracking started.
-        result = { Data: {} };
+        console.error('GetSharedGroupData error:', err);
+        // Only a genuine "this group doesn't exist yet" error means the room
+        // is legitimately empty. Anything else is a real problem and we
+        // should surface it instead of pretending the room has no players.
+        const notFound = err.errorCode === 'SharedGroupNotFound'
+          || /not\s*found/i.test(err.message || '');
+        if (notFound) {
+          result = { Data: {} };
+        } else {
+          throw err;
+        }
       }
 
       const entries = Object.entries(result.Data || {})
