@@ -232,6 +232,7 @@
       <button class="btn-danger" onclick="banPlayer()">Ban player</button>
     </div>
     <button class="btn-ghost" onclick="unbanPlayer()">Revoke existing ban</button>
+    <button class="btn-ghost" onclick="clearKickFlag()">Clear kick flag (allow rejoin)</button>
 
     <div id="actionStatus"></div>
 
@@ -423,11 +424,23 @@
     await runAction('kick', async () => {
       await callPlayFab('/Server/UpdateUserReadOnlyData', {
         PlayFabId: state.currentPlayer.PlayerId,
+        Permission: 'Public',
         Data: {
           moderation_flag: JSON.stringify({ action: 'kick', reason, at: new Date().toISOString() }),
         },
       });
-      return 'Kick flag written. Player will be disconnected once your game checks it.';
+      return 'Kick flag written. Player will be disconnected the next time their Master Client checks (every few seconds).';
+    });
+  }
+
+  async function clearKickFlag() {
+    await runAction('clear', async () => {
+      await callPlayFab('/Server/UpdateUserReadOnlyData', {
+        PlayFabId: state.currentPlayer.PlayerId,
+        Permission: 'Public',
+        Data: { moderation_flag: '' },
+      });
+      return 'Kick flag cleared. Player can rejoin normally.';
     });
   }
 
@@ -469,6 +482,7 @@
     ban: 'color:#E5484D;background:rgba(229,72,77,0.15)',
     unban: 'color:#34D399;background:rgba(52,211,153,0.15)',
     kick: 'color:#4C7EFF;background:rgba(76,126,255,0.15)',
+    clear: 'color:#8890A6;background:rgba(136,144,166,0.15)',
   };
 
   function renderLog() {
