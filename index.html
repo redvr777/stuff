@@ -199,7 +199,7 @@
 
   <div class="card">
     <h2>Connection</h2>
-    <p class="hint">Your Secret Key stays in this browser's local storage only — it's never sent anywhere but PlayFab.</p>
+    <p class="hint">titlestuff.</p>
     <label for="titleId">Title ID</label>
     <input id="titleId" placeholder="e.g. 1A2B3" autocomplete="off" />
     <label for="secretKey">Secret Key</label>
@@ -210,7 +210,7 @@
 
   <div class="card">
     <h2>Find a player</h2>
-    <p class="hint">Paste their PlayFab ID (most reliable) or search by display name.</p>
+    <p class="hint">id or name.</p>
     <label for="lookupInput">PlayFab ID or display name</label>
     <input id="lookupInput" placeholder="e.g. AB12CD34EF56 or PlayerName123" />
     <button class="btn-primary" onclick="lookupPlayer()" id="lookupBtn">Look up player</button>
@@ -239,13 +239,7 @@
     <details style="margin-top:16px;">
       <summary>Why "Kick from Photon" doesn't disconnect them immediately</summary>
       <p class="hint" style="margin:0;">
-        This button writes a flag to PlayFab — it doesn't touch Photon directly, since Photon
-        Cloud has no outside "kick" API. The actual disconnect happens inside your game: the
-        room's Master Client needs to be running the <code>KickWatcher.cs</code> script, which
-        checks PlayFab every few seconds and calls Photon's real kick
-        (<code>PhotonNetwork.CloseConnection</code>) when it sees this flag. If nothing happens
-        after clicking this, it almost always means that script isn't running in your game yet
-        — the button itself is working correctly.
+
       </p>
     </details>
   </div>
@@ -253,12 +247,7 @@
   <div class="card">
     <h2>Set up your game (one-time)</h2>
     <p class="hint" style="margin:0;">
-      For this button to actually disconnect players, your game needs three things:
-      1) set Photon's UserId to the player's PlayFabId when connecting
-      (<code>PhotonNetwork.AuthValues = new AuthenticationValues(playFabId)</code>),
-      2) enable Photon's CloseConnection feature (off by default), and
-      3) attach <code>KickWatcher.cs</code> to a persistent GameObject in your scene.
-      Without all three, kicks will only ever exist as a flag in PlayFab.
+     
     </p>
   </div>
 
